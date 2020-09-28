@@ -1,0 +1,14 @@
+[package]
+name = "drg_dlch"
+version = "0.1.0"
+authors = ["g <ggg@example.com>"]
+edition = "2018"
+
+[dependencies]
+winapi = { version="0.3", features = ["winnt", "processthreadsapi", "psapi", "tlhelp32", "std", "memoryapi", "minwinbase"] }
+anyhow = "1.0"
+clap = "2.33"
+inputbot = "0.5"
+process-memory = "0.4"
+sysinfo = "0.15"
+rand = "0.7"
