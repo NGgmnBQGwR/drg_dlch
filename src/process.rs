@@ -1,12 +1,11 @@
 // taken from https://github.com/Crauzer/sidonia
 
-use std::{mem, ptr, thread, time::Duration};
+use std::{mem, ptr};
 use winapi::{
-    ctypes::c_void,
-    shared::minwindef::{DWORD, HMODULE, LPCVOID, LPVOID, MAX_PATH},
+    shared::minwindef::{DWORD, HMODULE, LPVOID, MAX_PATH},
     um::{
         handleapi::CloseHandle,
-        memoryapi::{ReadProcessMemory, VirtualAllocEx, VirtualProtectEx, WriteProcessMemory},
+        memoryapi::ReadProcessMemory,
         processthreadsapi::OpenProcess,
         psapi::{EnumProcessModules, GetModuleFileNameExW},
         tlhelp32::{
@@ -14,9 +13,8 @@ use winapi::{
             TH32CS_SNAPPROCESS,
         },
         winnt::{
-            HANDLE, MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE, PAGE_READWRITE,
-            PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE,
-            SYNCHRONIZE, WCHAR,
+            HANDLE, PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ,
+            PROCESS_VM_WRITE, SYNCHRONIZE, WCHAR,
         },
     },
 };
@@ -137,48 +135,6 @@ impl Process {
         }
     }
 
-    pub fn dump(&self) -> Vec<u8> {
-        unsafe {
-            let mut dumped_data = vec![0u8; 0x4000000];
-            let mut total_read = 0u64;
-
-            while total_read != 0x4000000 {
-                ReadProcessMemory(
-                    self.handle,
-                    (self.base() as u64 + total_read) as *const c_void,
-                    dumped_data.as_mut_ptr().add(total_read as usize) as *mut c_void,
-                    0x1000,
-                    &mut 0,
-                );
-                total_read += 0x1000;
-            }
-
-            dumped_data
-        }
-    }
-
-    pub fn allocate_memory(&self, size: usize) -> Option<LPVOID> {
-        unsafe {
-            let ptr = VirtualAllocEx(
-                self.handle,
-                ptr::null_mut(),
-                size,
-                MEM_RESERVE | MEM_COMMIT,
-                PAGE_READWRITE,
-            );
-
-            if ptr != (0 as *mut c_void) {
-                Some(ptr)
-            } else {
-                None
-            }
-        }
-    }
-    pub fn allocate_struct<T>(&self) -> Option<LPVOID> {
-        let size = mem::size_of::<T>();
-        self.allocate_memory(size)
-    }
-
     pub fn read_buffer(&self, ptr: LPVOID, size: usize) -> Option<Vec<u8>> {
         unsafe {
             let mut buffer = vec![0u8; size];
@@ -197,6 +153,7 @@ impl Process {
             }
         }
     }
+
     pub fn read<T>(&self, ptr: LPVOID) -> Option<T> {
         unsafe {
             let size = mem::size_of::<T>();
@@ -214,50 +171,6 @@ impl Process {
             } else {
                 None
             }
-        }
-    }
-
-    pub fn write_buffer(&self, address: LPVOID, buffer: &[u8], size: usize) -> bool {
-        unsafe {
-            WriteProcessMemory(self.handle, address, buffer.as_ptr().cast(), size, &mut 0) != 0
-        }
-    }
-    pub fn write<T>(&self, address: LPVOID, to_write: &T) -> bool {
-        unsafe {
-            let size = mem::size_of::<T>();
-
-            WriteProcessMemory(
-                self.handle,
-                address,
-                to_write as *const _ as LPCVOID,
-                size,
-                ptr::null_mut(),
-            ) != 0
-        }
-    }
-
-    pub fn mark_memory_executable(&self, ptr: LPVOID, size: usize) -> bool {
-        unsafe { VirtualProtectEx(self.handle, ptr, size, PAGE_EXECUTE, ptr::null_mut()) != 0 }
-    }
-
-    pub fn wait_ptr_non_zero(&self, ptr: LPVOID) -> u32 {
-        unsafe {
-            let mut buffer = [0u8; 4];
-            let sleep_duration = Duration::from_millis(1);
-
-            while u32::from_le_bytes(buffer) == 0 {
-                thread::sleep(sleep_duration);
-
-                ReadProcessMemory(
-                    self.handle,
-                    ptr,
-                    buffer.as_mut_ptr().cast(),
-                    4usize,
-                    ptr::null_mut(),
-                );
-            }
-
-            u32::from_le_bytes(buffer)
         }
     }
 }
