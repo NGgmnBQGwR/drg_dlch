@@ -5,7 +5,6 @@ use process::Process;
 use winapi::ctypes::c_void;
 
 const GAME_PROCESS_NAME: &str = "FSD-Win64-Shipping.exe";
-// use_button = 'E';
 const CHARGED_SHOT_CHARGE_TIME: u64 = 1_150;
 const NORMAL_SPEED: f32 = 44.1398490;
 const CHARGED_SPEED: f32 = 13.199477;
@@ -33,7 +32,6 @@ fn get_delay(dist: f32) -> f32 {
 fn main() {
     let mut process = Process::find_by_exe(GAME_PROCESS_NAME).expect("No DRG process found.");
 
-    let offsets: Vec<usize> = vec![0x037C52D0, 0x1F8, 0x108, 0x610, 0x230, 0x118];
     let offsets: Vec<usize> = vec![0x037AA080, 0x30, 0x360, 0xcb8, 0x1c0, 0x658, 0x230, 0x118];
     println!("{:?}", read_memory_offset::<f32>(&mut process, &offsets));
 
